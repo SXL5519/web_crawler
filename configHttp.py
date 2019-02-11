@@ -5,6 +5,8 @@
 import ast
 import re
 import csv
+
+import os
 import requests
 
 import json
@@ -97,21 +99,28 @@ class ConfigHttp():
             # self.logger.error("Time out!")
             return None
 
-    def write_csv(self,data,name):
+    def write_csv(self,data,name,filename,n):
         """
         将爬取的数据写入CSV文件
         :param data:写入的数据
         :param name:csv文件列名
+        :param filename:csv文件名
         :return:
         """
         list1=[]
-        with open('./aa.csv', 'a+') as f:
+        if n==1:
+            if os.path.exists('./data_file/'+filename+'.csv'):
+                os.remove('./data_file/'+filename+'.csv')
+        with open('./data_file/'+filename+'.csv', 'a+',newline='') as f:
             csv_write = csv.writer(f)
-            csv_write.writerow(name)
+            if n==1:
+                csv_write.writerow(name)
             for i in data:
-                for j in i[0].split(','):
+                print(i)
+                list1.append(str(i[0]))
+                for j in i[1].split(','):
                     list1.append(j)
-                list1.append(i[1])
+                list1.append(str(i[2]))
                 csv_write.writerow(list1)
                 list1=[]
 
@@ -124,24 +133,7 @@ class ConfigHttp():
         """
         re_str = re.compile(i)
         re_data=re_str.findall(data)
+        # print(re_data)
         return re_data
 
-if __name__ == "__main__":
-    a=ConfigHttp()
-    a.set_url("/cwl_admin/kjxx/findDrawNotice")
-    a.convert_set_params({'name':'ssq','issueCount':'30'})
-    a.convert_set_headers({'User-Agent':'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.78 Safari/537.36',
-                           'Referer':'http://www.cwl.gov.cn/kjxx/ssq/kjgg/'})
-    print(a.get().url)
-    q=a.get().text
-    # print(q)
-    # print(a.re_data('"red":"(.*?)","blue":"(.*?)"',q))
-    # a.write_csv(a.re_data('"red":"(.*?)"',q))
-    name = ['red_1', 'red_2', 'red_3', 'red_4', 'red_5', 'red_6', 'blue']  ###列名
-    re_n='"red":"(.*?)","blue":"(.*?)"'
-    a.write_csv(a.re_data(re_n, q),name)
 
-    # print(a.post().status_code)
-
-    # print(a.post().json())
-    # print(a.post().content)
