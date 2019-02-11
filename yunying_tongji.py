@@ -47,13 +47,13 @@ class test_tongji():
                                            + ' 16:00:00','%Y-%m-%d %H:%M:%S')
             date_end = datetime.strptime((date.today() + timedelta(days=-nu+1)).strftime("%Y-%m-%d")
                                          + ' 15:59:59','%Y-%m-%d %H:%M:%S')
-            return date_start,date_end
+            # return date_start,date_end
         else:
             date_start = datetime.strptime((date.today() + timedelta(days=-nu)).strftime("%Y-%m-%d")
                                            + ' 16:00:00', '%Y-%m-%d %H:%M:%S')
             date_end = datetime.strptime((date.today()).strftime("%Y-%m-%d")
                                          + ' 15:59:59', '%Y-%m-%d %H:%M:%S')
-            return date_start,date_end
+        return date_start,date_end
 
 
 
