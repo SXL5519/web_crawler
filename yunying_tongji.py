@@ -71,6 +71,7 @@ class test_tongji():
         self.total_refund_three=0
         self.total_sales_balance=0
         self.total_refund_balance=0
+        self.total_Trans_sales=0
 
         database=DB()
         db_total=database.connect_mongodb_all('tb_order',self.mon_sql('sale',self.get_data(n,nu)[0],self.get_data(n,nu)[1]))
