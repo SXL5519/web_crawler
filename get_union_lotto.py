@@ -5,6 +5,7 @@ import ast
 
 import configHttp
 
+
 a=configHttp.ConfigHttp()
 a.set_url("/cwl_admin/kjxx/findDrawNotice")
 # a.convert_set_params({'name':'ssq','dayStart':'2017-10-24','dayEnd':'2019-02-11','pageNo':n})
@@ -24,6 +25,9 @@ for n in range(1,10000):
     if ast.literal_eval(q).get('state')==1:
         break
     a.write_csv(a.re_data(re_n, q), name, 'union_lotto',n)
+
+
+
 
 
 
