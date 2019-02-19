@@ -52,11 +52,11 @@ class test_shop_tongji():
                 {"orderStatus":"ORDER_WAIT_DELIVER"},{"orderStatus":"ORDER_WAIT_RECEIVE"}]},{"supplier" :ObjectId(store_id)}]}
 
         ###今日发放红包
-        red_page=[{'$lookup':{'from': "tb_order_detail",'localField': "orderDetail",'foreignField': "_id",'as': "orderDetail"}},{'$unwind': '$orderDetail'},
-                             {'$lookup':{'from': "tb_order",'localField': "orderDetail.order",'foreignField': "_id",'as': "order"}},{'$unwind': '$order'},
-                             {'$match':{'$and':[{'$or':[{"status": "ACCOUNTED"},{"status": "FROZEN_ING"},{"status": "WAIT_SHARE"}]},
-                             {"obtainTime":{'$gte': start_data}},{"obtainTime": {'$lte': end_tata}},{"order.supplier" :ObjectId(store_id)}]}},
-                             {'$group':{'_id':'销售总额','sum_money':{'$sum':'$money'}}}]
+        red_page=[{'$lookup':{'from':"tb_red_packet",'localField':"_id",'foreignField': "adFeeRule",'as':"red_packet"}},{'$unwind': '$red_packet'},
+                           {'$match':{'$and':[{"merchant" : ObjectId(store_id)},
+                           {"red_packet.obtainTime":{'$gte': start_data}},
+                           {"red_packet.obtainTime": {'$lte':end_tata}}]}},
+                           {'$group':{'_id':'今日红包发放总额','sum_money':{'$sum':'$red_packet.money'}}}]
 
         #######粮票规则总余额
         remainMoney=[{'$match':{'$and':[{"merchant" :ObjectId(store_id)},{"isdelete" : False}]}},
@@ -74,13 +74,22 @@ class test_shop_tongji():
                         {'$match':{'$and':[{"type" : "RETURN_GOODS"},{"status" : "WAIT_HANDLE"},{'order.supplier':ObjectId(store_id)}]}},
                         {'$group':{'_id':'','number':{'$sum':1}}}]
 
-        #####累计用户数
+        ###待确认退货
+        return_confirmed=[{'$lookup':{'from':"tb_order_detail",'localField':"orderDetail",'foreignField': "_id",'as': "orderDetail"}},{'$unwind':'$orderDetail'},
+                            {'$lookup':{'from':"tb_order",'localField':"orderDetail.order",'foreignField': "_id",'as': "order"}},{'$unwind': '$order'},
+                              {'$match':{'$and':[{'$or':[{"status" : "RETURN_ING"},{"status" : "REFUND_ING"},{"status" : "ACCEPTED"},
+                              {"status" : "REFUND_FAIL"}]},{"type" :"RETURN_GOODS"},{'order.supplier':ObjectId(store_id)}]}},
+                              {'$group':{'_id':'待确认退货订单数','number':{'$sum':1}}}]
+
+   #####累计用户数
         shop_user=[{'$match':{'$and':[{'$or':[{"orderStatus":"ORDER_FINISH"},{"orderStatus":"ORDER_WAIT_DELIVER"},{"orderStatus":"ORDER_WAIT_RECEIVE"}]},
-                   {"supplier" : ObjectId('5b33832c0b06ca574e4f95ac')}]}},{'$group':{"_id":'$customer'}},{'$count':'countNum'}]
+                   {"supplier" : ObjectId(store_id)}]}},{'$group':{"_id":'$customer'}},{'$count':'countNum'}]
+
+        # shop_user=[{'$match':{'$and':[{"supplier" :ObjectId(store_id)}]}},{'$group':{"_id":'$customer'}},{'$count':'countNum'}]
 
         #####复购用户数
         more_user=[{'$match':{'$and':[{'$or':[{"orderStatus":"ORDER_FINISH"},{"orderStatus":"ORDER_WAIT_DELIVER"},{"orderStatus":"ORDER_WAIT_RECEIVE"}]},
-                   {"supplier" : ObjectId('5b33832c0b06ca574e4f95ac')}]}},{'$group':{"_id":'$customer','number':{'$sum':1}}},
+                   {"supplier" : ObjectId(store_id)}]}},{'$group':{"_id":'$customer','number':{'$sum':1}}},
                    {'$match':{'number':{'$gt':1}}},{'$count':'countNum'}]
 
         ####新门客
@@ -98,7 +107,13 @@ class test_shop_tongji():
         shelf_false={'$and':[{"merchant" : ObjectId(store_id)},{"isDelete" : False},{"shelf" : False}]}
 
         ###全部商品
-        all_goods={'$and':[{"merchant" : ObjectId("5b33832c0b06ca574e4f95ac")},{"isDelete" : False}]}
+        all_goods={'$and':[{"merchant" : ObjectId(store_id)},{"isDelete" : False}]}
+
+        ####库存紧张
+        short_stock=[{'$lookup':{'from':"tb_goodsSku",'localField':"goodsSkus",'foreignField': "_id",'as': "goodssku"}},{'$unwind': '$goodssku'},
+                       {'$match':{'$and':[{"merchant" : ObjectId("5b33832c0b06ca574e4f95ac")},{"isDelete" : False}
+                       ]}},{'$addFields':{'cmpTo250': {'$cmp': [ "$goodssku.warnStock", "$goodssku.stock" ]}}}
+                        , {'$match': {'$or':[{"cmpTo250": 1}, {"cmpTo250": 0}]}}, {'$group': {'_id': '$_id', }}, {'$count': 'countNum'}]
 
         if n==1:
             return profit
@@ -137,6 +152,10 @@ class test_shop_tongji():
             return shelf_false
         if n==18:
             return all_goods
+        if n==19:
+            return short_stock
+        if n==20:
+            return return_confirmed
 
     def execute_sql(self,n,nu,name):
         self.profit_s = 0##总利润
@@ -155,7 +174,7 @@ class test_shop_tongji():
             totalPrice=float(str(i.get('totalPrice')))###售价
             count=int(i.get('count'))
             self.profit_s=self.profit_s+count*(totalPrice-costPrice)
-        print(self.profit_s)
+        # print(self.profit_s)
         db_refund=database.connect_mongodb_all('tb_return_apply',2,
                                                 self.sql_s( tongji.get_data(n, nu)[0], tongji.get_data(n, nu)[1],2,store_id))
         for j in db_refund:
@@ -170,7 +189,7 @@ class test_shop_tongji():
             else: ##单类商品退货后的利润-运费
                 self.refund = self.refund + refund_count * (refund_totalPrice - refund_costPrice)-self.transPrice
         profit = self.profit_s - abs(self.refund) ###利润
-        print(self.refund)
+        # print(self.refund)
         print('运费：%.2f'%self.transPrice)
         print('利润为:%.2f'%profit)
     def count_sales_amount(self,n,nu,name):
@@ -222,7 +241,7 @@ class test_shop_tongji():
         store_id = store.get('_id')
         order_nu = database.connect_mongodb_all('tb_order', 3,
                                                         self.sql_s(tongji.get_data(n, nu)[0], tongji.get_data(n, nu)[1],5, store_id))
-        print(order_nu)
+        # print(order_nu)
         print('%d天订单数：%d'%(nu,order_nu))
 
     def count_all_order_nu(self,n,nu,name):
@@ -239,7 +258,7 @@ class test_shop_tongji():
         order_nu = database.connect_mongodb_all('tb_order', 3,
                                                 self.sql_s(tongji.get_data(n, nu)[0], tongji.get_data(n, nu)[1], 6,
                                                            store_id))
-        print(order_nu)
+        # print(order_nu)
         print('订单总数：%d' % order_nu)
 
     def count_red_page_nu(self,n,nu,name):
@@ -255,7 +274,7 @@ class test_shop_tongji():
         tongji = test_tongji()
         store = database.connect_mongodb_all('tb_merchant', 1, self.select_shop_id(name))
         store_id = store.get('_id')
-        red_page = database.connect_mongodb_all('tb_red_packet', 2,
+        red_page = database.connect_mongodb_all('tb_adfee_rule', 2,
                                                         self.sql_s(tongji.get_data(n, nu)[0], tongji.get_data(n, nu)[1],7, store_id))
         for i in red_page:
             self.red_page_nu=float(str(i.get('sum_money')))
@@ -311,13 +330,13 @@ class test_shop_tongji():
                                                 self.sql_s(tongji.get_data(n, nu)[0], tongji.get_data(n, nu)[1], 9,
                                                            store_id,orderstation))
         if orderstation=='ORDER_WAIT_PAY':
-            print('%d天待付款订单为：%d'%(nu,order_nu))
+            print('待付款订单为：%d'%(order_nu))
         elif orderstation=='ORDER_WAIT_DELIVER':
-            print('%d天待发货订单为：%d' % (nu, order_nu))
+            print('待发货订单为：%d' % (order_nu))
         elif orderstation=='ORDER_WAIT_RECEIVE':
-            print('%d天已发货订单为：%d' % (nu, order_nu))
+            print('已发货订单为：%d' % (order_nu))
         elif orderstation=='ORDER_FINISH':
-            print('%d天已完成订单为：%d' % (nu, order_nu))
+            print('已完成订单为：%d' % (order_nu))
     def count_pending_refund(self,n,nu,name):
         """
         统计商家待处理的退款单数量
@@ -490,8 +509,49 @@ class test_shop_tongji():
                                                                store_id))
         print('店铺商品数：%d' % self.shelf_a)
 
+    def count_short_stock(self,n,nu,name):
+        """
+        统计商家商品库存紧张数
+        :param n:
+        :param nu:
+        :param name:
+        :return:
+        """
+        self.short_stock_nu = 0
+        database = DB()
+        tongji = test_tongji()
+        store = database.connect_mongodb_all('tb_merchant', 1, self.select_shop_id(name))
+        store_id = store.get('_id')
+        short_stock_s = database.connect_mongodb_all('tb_goods', 2,
+                                                      self.sql_s(tongji.get_data(n, nu)[0], tongji.get_data(n, nu)[1],19,store_id))
+        for i in short_stock_s:
+            self.short_stock_nu = int(str(i.get('countNum')))
+        print('商家库存紧张数：%d' % (self.short_stock_nu))
+
+    def count_return_confirmed(self,n,nu,name):
+        """
+        统计待确认退货订单
+        :param n:
+        :param nu:
+        :param name:
+        :return:
+        """
+        self.return_confirmed = 0
+        database = DB()
+        tongji = test_tongji()
+        store = database.connect_mongodb_all('tb_merchant', 1, self.select_shop_id(name))
+        store_id = store.get('_id')
+        refund = database.connect_mongodb_all('tb_return_apply', 2,
+                                              self.sql_s(tongji.get_data(n, nu)[0], tongji.get_data(n, nu)[1], 20,
+                                                         store_id))
+        for i in refund:
+            self.return_confirmed = int(str(i.get('number')))
+        print('商家待确认退货单数量为：%d' % self.return_confirmed)
+
+
 if __name__ == "__main__":
-    name='惠宜家艾家（恒大中央公园店）'
+    # name='惠宜家艾家（恒大中央公园店）'
+    name = '绪永艾家'
     a=test_shop_tongji()
     # a.execute_sql(1,10)
     ####今日销售额
@@ -508,18 +568,20 @@ if __name__ == "__main__":
     a.count_remainMoney(0,1,name)
     #####商家余额
     a.store_money(name)
-    ###今日商家待付款
+    ###商家待付款
     a.count_pending_order(0,1,name,'ORDER_WAIT_PAY')
-    ###今日商家待发货
+    ###商家待发货
     a.count_pending_order(0, 1, name, 'ORDER_WAIT_DELIVER')
-    ###今日商家已发货
+    ###商家已发货
     a.count_pending_order(0, 1, name, 'ORDER_WAIT_RECEIVE')
-    ###今日商家已完成
+    ###商家已完成
     a.count_pending_order(0, 1, name, 'ORDER_FINISH')
-    ###今日商家待处理的退款订单
+    ###商家待处理的退款订单
     a.count_pending_refund(0, 1, name)
-    ###今日商家待处理的退货订单
+    ###商家待处理的退货订单
     a.count_pending_return(0, 1, name)
+    ####商家待确认的退货订单
+    a.count_return_confirmed(0,1,name)
     ###商家累计用户数
     a.Shop_user(0,1,name)
     ###商家复购用户数
@@ -534,3 +596,5 @@ if __name__ == "__main__":
     a.count_goods_shelf_f(0,1,name)
     ##店铺商品数
     a.count_goods_all(0,1,name)
+    ###库存紧张
+    a.count_short_stock(0,1,name)
