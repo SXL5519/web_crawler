@@ -1,0 +1,124 @@
+
+###############商家##############
+
+######################################################今日销售额############################################
+
+db.tb_order.aggregate([{$match:{$and:[{"orderTime":{$gte:ISODate("2019-02-13T16:00:00.303Z")}},{"orderTime":{$lte:ISODate("2019-02-14T15:59:59.303Z")}},
+{"supplier" :ObjectId("5b4edd8d0b06ca10e99ec625")}]}},{$group:{_id:'销售总额',total:{$sum:'$totalPrice'},transPrice:{$sum:'$transPrice'}}}])
+
+#######################################累计销售额##########################################
+db.tb_order.aggregate([{$match:{"supplier" :ObjectId("5b4edd8d0b06ca10e99ec625")}]}},{$group:{_id:'销售总额',total:{$sum:'$totalPrice'},transPrice:{$sum:'$transPrice'}}}])
+
+
+
+########################################今日订单总数##############################################
+db.getCollection('tb_order').find({$and:[{$or:[{"orderStatus":"ORDER_FINISH"},
+{"orderStatus":"ORDER_WAIT_DELIVER"},{"orderStatus":"ORDER_WAIT_RECEIVE"}]},
+{"orderTime":{$gte:ISODate("2019-02-14T16:00:00.303Z")}},{"orderTime":{$lte:ISODate("2019-02-15T15:59:59.303Z")}},{"supplier" :ObjectId("5b4edd8d0b06ca10e99ec625")}]}).count()
+
+
+########################################统计商家所有订单#############################################
+db.getCollection('tb_order').find({$and:[{$or:[{"orderStatus":"ORDER_FINISH"},{"orderStatus":"ORDER_WAIT_DELIVER"},
+{"orderStatus":"ORDER_WAIT_RECEIVE"}]},{"supplier" :ObjectId("5b4edd8d0b06ca10e99ec625")}]}).count()
+
+
+#########################################今日粮票发放总额############################################
+
+
+db.tb_adfee_rule.aggregate([{'$lookup':{'from':"tb_red_packet",'localField':"_id",'foreignField': "adFeeRule",'as':"red_packet"}},{'$unwind': '$red_packet'},
+                           {'$match':{$and:[{"merchant" : ObjectId("5c3845a10b06ca069ff601c0")},
+                           {"red_packet.obtainTime":{'$gte': ISODate("2019-02-19T00:00:00.957+08:00")}},
+                           {"red_packet.obtainTime": {'$lte':ISODate("2019-02-19T23:59:59.957+08:00")}}]}},
+                           {'$group':{'_id':'今日红包发放总额','sum_money':{'$sum':'$red_packet.money'}}}])   
+
+
+#################################所有未被删除的所有粮票规则剩余金额#########################################
+db.view_adfee.aggregate([{$match:{$and:[{"merchant" :ObjectId("5b33832c0b06ca574e4f95ac")},{"isdelete" : false}]}},
+{$group:{_id:'粮票总余额',total:{$sum:'$remainMoney'}}}])
+
+
+################################钱包余额###########################################
+
+db.getCollection('tb_merchant').find({"storeName" : "惠宜家艾家（恒大中央公园店）"})
+
+
+#################今日待支付订单###########################
+//平台
+db.getCollection('tb_order').find({$and:[{"orderStatus" : "ORDER_WAIT_PAY"},{"orderTime":
+                             {'$gte': ISODate("2019-02-18T00:00:00.957+08:00")}},{"orderTime": {'$lte': ISODate("2019-02-18T23:59:59.957+08:00")}}]}).count()
+
+//商家
+db.getCollection('tb_order').find({$and:[{"orderStatus" : "ORDER_WAIT_PAY"},{"orderTime":
+                             {'$gte': ISODate("2019-02-18T00:00:00.957+08:00")}},{"orderTime": {'$lte': ISODate("2019-02-18T23:59:59.957+08:00")}},
+                             {"supplier" : ObjectId("5b5e717b0b06ca734cd0dbd2")}]}).count()
+
+#################今日待发货订单###########################
+//平台
+db.getCollection('tb_order').find({$and:[{"orderStatus" : "ORDER_WAIT_DELIVER"},{"orderTime":
+                             {'$gte': ISODate("2019-02-18T00:00:00.957+08:00")}},{"orderTime": {'$lte': ISODate("2019-02-18T23:59:59.957+08:00")}}]}).count()
+
+//商家
+db.getCollection('tb_order').find({$and:[{"orderStatus" : "ORDER_WAIT_DELIVER"},{"orderTime":
+                             {'$gte': ISODate("2019-02-18T00:00:00.957+08:00")}},{"orderTime": {'$lte': ISODate("2019-02-18T23:59:59.957+08:00")}},
+                             {"supplier" : ObjectId("5b5e717b0b06ca734cd0dbd2")}]}).count()  
+
+
+
+############################待处理的退货订单#################
+
+db.tb_return_apply.aggregate([{'$lookup':{'from':"tb_order_detail",'localField':"orderDetail",'foreignField': "_id",'as': "orderDetail"}},{'$unwind': '$orderDetail'},
+                              {'$lookup':{'from':"tb_order",'localField':"orderDetail.order",'foreignField': "_id",'as': "order"}},{'$unwind': '$order'},
+                              {'$match':{$and:[{"type" : "RETURN_GOODS"},{"status" : "WAIT_HANDLE"},{'order.supplier':ObjectId("5c3845a10b06ca069ff601c0")}]}},{$group:{_id:'',number:{$sum:1}}}])
+
+############################待确认的退货订单#################
+
+db.tb_return_apply.aggregate([{'$lookup':{'from':"tb_order_detail",'localField':"orderDetail",'foreignField': "_id",'as': "orderDetail"}},{'$unwind':'$orderDetail'},
+                            {'$lookup':{'from':"tb_order",'localField':"orderDetail.order",'foreignField': "_id",'as': "order"}},{'$unwind': '$order'},
+                              {'$match':{$and:[{$or:[{"status" : "RETURN_ING"},{"status" : "REFUND_ING"},{"status" : "ACCEPTED"},
+                              {"status" : "REFUND_FAIL"}]},{"type" :"RETURN_GOODS"},{'order.supplier':ObjectId("5b4edd8d0b06ca10e99ec625")}]}},
+                              {$group:{_id:'待确认退货订单数',number:{$sum:1}}}])
+
+
+##########################待处理退款订单###############
+//退款
+db.tb_return_apply.aggregate([{'$lookup':{'from':"tb_order",'localField':"order",'foreignField': "_id",'as': "order"}},{'$unwind': '$order'},
+                               {'$match':{$and:[{"type" : "RETURN_MONEY"},{"status" : "WAIT_HANDLE"},{'order.supplier':ObjectId("5c6535ee4aa423c1db8dc994")}]}},{$group:{_id:'',number:{$sum:1}}}])
+
+
+################订单数量################################
+db.getCollection('tb_order').find({$and:[{$or:[{"orderStatus":"ORDER_FINISH"},{"orderStatus":"ORDER_WAIT_DELIVER"},{"orderStatus":"ORDER_WAIT_RECEIVE"}]},
+{"orderTime":{$gte:ISODate("2018-11-22T16:00:00.303Z")}},{"orderTime":{$lte:ISODate("2018-11-23T15:59:59.303Z")}},{"supplier" : ObjectId("5b5e717b0b06ca734cd0dbd2")}]}).count()
+
+#########################累计用户数量###################
+db.tb_order.aggregate([{'$match':{$and:[{'$or':[{"orderStatus":"ORDER_FINISH"},{"orderStatus":"ORDER_WAIT_DELIVER"},{"orderStatus":"ORDER_WAIT_RECEIVE"}]},{"supplier" : ObjectId("5b33832c0b06ca574e4f95ac")}]}},{$group:{"_id":'$customer'}},{$count:'countNum'}])
+
+##########################复购用户数量#################
+db.tb_order.aggregate([{'$match':{$and:[{"supplier" : ObjectId("5b33832c0b06ca574e4f95ac")}]}},{$group:{"_id":'$customer','number':{$sum:1}}},{$match:{'number':{$gt:1}}},{$count:'countNum'}])
+
+
+########################店铺收藏#######################
+db.getCollection('tb_collection').find({$and:[{"collection_id" : ObjectId("5b1e226e0b06ca7ab6d6be02")},{"type" : "MERCHANT"}]}).count()
+
+
+################商品下架###############################
+db.getCollection('tb_goods').find({$and:[{"merchant" : ObjectId("5b33832c0b06ca574e4f95ac")},{"isDelete" : false},{"shelf" : false}]}).count()
+
+##########################商品下架######################
+db.getCollection('tb_goods').find({$and:[{"merchant" : ObjectId("5b33832c0b06ca574e4f95ac")},{"isDelete" : false},{"shelf" : true}]}).count()
+
+
+#########################库存紧张#####################
+//商家
+db.tb_goods.aggregate([{'$lookup':{'from':"tb_goodsSku",'localField':"goodsSkus",'foreignField': "_id",'as': "goodssku"}},{'$unwind': '$goodssku'},
+                       {'$match':{$and:[{"merchant" : ObjectId("5b33832c0b06ca574e4f95ac")},{"isDelete" : false}
+                       ]}},{$addFields:{cmpTo250: { $cmp: [ "$goodssku.warnStock", "$goodssku.stock" ]}}}
+                       ,{$match:{$or:[{"cmpTo250":1},{"cmpTo250":0}]}},{$group:{_id:'$_id',}},{$count:'countNum'}])
+
+//平台
+
+db.tb_goods.aggregate([{'$lookup':{'from':"tb_goodsSku",'localField':"goodsSkus",'foreignField': "_id",'as': "goodssku"}},{'$unwind': '$goodssku'},
+                       {'$match':{$and:[{"isDelete" : false}
+                       ]}},{$addFields:{cmpTo250: { $cmp: [ "$goodssku.warnStock", "$goodssku.stock" ]}}}
+                       ,{$match:{$or:[{"cmpTo250":1},{"cmpTo250":0}]}},{$group:{_id:'$_id',}},{$count:'countNum'}])
+
+

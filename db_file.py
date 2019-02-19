@@ -45,12 +45,12 @@ class DB:
         db = client[database]
         # print(db)
         collection = db[table]
-        print(n)
+        # print(n)
         if type==1:
             value=collection.find_one(n)
-        if type == 2:
+        elif type == 2:
             value=collection.aggregate(n)
-        if type==3:
+        elif type==3:
             value = collection.find(n).count()
         # print(value)
         client.close()
