@@ -34,22 +34,23 @@ class test_shop_tongji():
                              {'orders.orderTime': {'$lte': end_tata}},{'statusList.status': "FINISHED"},
                              {'statusList.time': {'$gte': start_data}},
                              {'statusList.time': {'$lte': end_tata}},
-                             {"orders.supplier" :ObjectId("5b4edd8d0b06ca10e99ec625")}]}}]
-            #####销售金额（流水）
-        sales_amount=[{'$match':{'$and':[{"orderTime":{'$gte':start_data}},{"orderTime":{'$lte':end_tata}},
-                      {"supplier" :ObjectId(store_id)}]}},
-                      {'$group':{'_id':'销售总额','total':{'$sum':'$totalPrice'},'transPrice':{'$sum':'$transPrice'}}}]
+                             {"orders.supplier" :ObjectId(store_id)}]}}]
+        #####销售金额（流水）
+        sales_amount=[{'$match':{'$and':[{"orderTime":{'$gte':start_data}},
+                        {"orderTime":{'$lte':end_tata}},
+                        {"supplier" :store_id},
+                        {"payTime":{'$ne':None}}]}},
+                        {'$group':{'_id':'当日销售总额','total':{'$sum':'$totalPrice'},'transPrice':{'$sum':'$transPrice'}}}]
 
         #####销售总金额（所有）
-        sales_amount_all=[{'$match':{"supplier" :ObjectId(store_id)}},
-                      {'$group':{'_id':'销售总额','total':{'$sum':'$totalPrice'},'transPrice':{'$sum':'$transPrice'}}}]
+        sales_amount_all=[{'$match':{'$and':[{"supplier" :ObjectId(store_id)},
+                            {"payTime":{'$ne':None}}]}},
+                            {'$group':{'_id':'销售总额','total':{'$sum':'$totalPrice'},'transPrice':{'$sum':'$transPrice'}}}]
         ###今日订单数量
-        order_nu={'$and':[{'$or':[{"orderStatus":"ORDER_FINISH"},
-                {"orderStatus":"ORDER_WAIT_DELIVER"},{"orderStatus":"ORDER_WAIT_RECEIVE"}]},
+        order_nu={'$and':[{"payTime":{'$ne':None}},
                 {"orderTime":{'$gte':start_data}},{"orderTime":{'$lte':end_tata}},{"supplier" :ObjectId(store_id)}]}
         ###所有订单
-        all_order_nu={'$and':[{'$or':[{"orderStatus":"ORDER_FINISH"},
-                {"orderStatus":"ORDER_WAIT_DELIVER"},{"orderStatus":"ORDER_WAIT_RECEIVE"}]},{"supplier" :ObjectId(store_id)}]}
+        all_order_nu={'$and':[{"payTime":{'$ne':None}},{"supplier" :ObjectId(store_id)}]}
 
         ###今日发放红包
         red_page=[{'$lookup':{'from':"tb_red_packet",'localField':"_id",'foreignField': "adFeeRule",'as':"red_packet"}},{'$unwind': '$red_packet'},
@@ -77,11 +78,10 @@ class test_shop_tongji():
         ###待确认退货
         return_confirmed=[{'$lookup':{'from':"tb_order_detail",'localField':"orderDetail",'foreignField': "_id",'as': "orderDetail"}},{'$unwind':'$orderDetail'},
                             {'$lookup':{'from':"tb_order",'localField':"orderDetail.order",'foreignField': "_id",'as': "order"}},{'$unwind': '$order'},
-                              {'$match':{'$and':[{'$or':[{"status" : "RETURN_ING"},{"status" : "REFUND_ING"},{"status" : "ACCEPTED"},
-                              {"status" : "REFUND_FAIL"}]},{"type" :"RETURN_GOODS"},{'order.supplier':ObjectId(store_id)}]}},
+                              {'$match':{'$and':[{'$or':[{"status" : "ACCEPTED"},]},{"type" :"RETURN_GOODS"},{'order.supplier':ObjectId(store_id)}]}},
                               {'$group':{'_id':'待确认退货订单数','number':{'$sum':1}}}]
 
-   #####累计用户数
+        #####累计用户数
         shop_user=[{'$match':{'$and':[{'$or':[{"orderStatus":"ORDER_FINISH"},{"orderStatus":"ORDER_WAIT_DELIVER"},{"orderStatus":"ORDER_WAIT_RECEIVE"}]},
                    {"supplier" : ObjectId(store_id)}]}},{'$group':{"_id":'$customer'}},{'$count':'countNum'}]
 
@@ -111,9 +111,9 @@ class test_shop_tongji():
 
         ####库存紧张
         short_stock=[{'$lookup':{'from':"tb_goodsSku",'localField':"goodsSkus",'foreignField': "_id",'as': "goodssku"}},{'$unwind': '$goodssku'},
-                       {'$match':{'$and':[{"merchant" : ObjectId("5b33832c0b06ca574e4f95ac")},{"isDelete" : False}
+                       {'$match':{'$and':[{"merchant" : ObjectId(store_id)},{"isDelete" : False}
                        ]}},{'$addFields':{'cmpTo250': {'$cmp': [ "$goodssku.warnStock", "$goodssku.stock" ]}}}
-                        , {'$match': {'$or':[{"cmpTo250": 1}, {"cmpTo250": 0}]}}, {'$group': {'_id': '$_id', }}, {'$count': 'countNum'}]
+                        ,{'$match':{'$or':[{"cmpTo250": 1},{"cmpTo250": 0}]}},{'$group': {'_id': '$_id', }},{'$count': 'countNum'}]
 
         if n==1:
             return profit
@@ -203,6 +203,7 @@ class test_shop_tongji():
         tongji = test_tongji()
         store=database.connect_mongodb_all('tb_merchant',1,self.select_shop_id(name))
         store_id=store.get('_id')
+        # print(store_id)
         sales_amount = database.connect_mongodb_all('tb_order',2,
                                                  self.sql_s(tongji.get_data(n, nu)[0], tongji.get_data(n, nu)[1], 3,store_id))
         for i in sales_amount:
@@ -552,6 +553,7 @@ class test_shop_tongji():
 if __name__ == "__main__":
     # name='惠宜家艾家（恒大中央公园店）'
     name = '绪永艾家'
+    # name='西门艾家'
     a=test_shop_tongji()
     # a.execute_sql(1,10)
     ####今日销售额
@@ -598,3 +600,13 @@ if __name__ == "__main__":
     a.count_goods_all(0,1,name)
     ###库存紧张
     a.count_short_stock(0,1,name)
+    ###第几天的销售额
+    a.count_sales_amount(0,29,name)
+    ###近几天的销售额
+    a.count_sales_amount(1, 7, name)
+    ###近几天的销售额
+    a.count_sales_amount(1, 15, name)
+    ###近几天的销售额
+    a.count_sales_amount(1, 30, name)
+    ###近几天的销售额
+    a.count_sales_amount(1, 90, name)
