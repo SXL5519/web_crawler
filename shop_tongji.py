@@ -553,7 +553,7 @@ class test_shop_tongji():
 if __name__ == "__main__":
     # name='惠宜家艾家（恒大中央公园店）'
     name = '绪永艾家'
-    # name='西门艾家'
+    # name='理工艾家'
     a=test_shop_tongji()
     # a.execute_sql(1,10)
     ####今日销售额
