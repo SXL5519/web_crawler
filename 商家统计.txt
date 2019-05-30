@@ -121,4 +121,18 @@ db.tb_goods.aggregate([{'$lookup':{'from':"tb_goodsSku",'localField':"goodsSkus"
                        ]}},{$addFields:{cmpTo250: { $cmp: [ "$goodssku.warnStock", "$goodssku.stock" ]}}}
                        ,{$match:{$or:[{"cmpTo250":1},{"cmpTo250":0}]}},{$group:{_id:'$_id',}},{$count:'countNum'}])
 
+#############显示某一个字段##########
+db.tb_pickCode.aggregate([{$group:{_id:'$_id','pickGoodsCode':{$first:'$pickGoodsCode'},number:{$sum:1}}},])
+
+//查询pickGoodsCode字段值大于10个字符
+db.getCollection('tb_pickCode').find({"pickGoodsCode": {"$exists": true, "$regex": /^.{10,}$/}}).limit(5)
+
+//统计pickGoodsCode相同值出现的次数
+db.tb_pickCode.aggregate([{$group:{_id:'$_id','pickGoodsCode':{$first:'$pickGoodsCode'},number:{$sum:1}}}])
+
+//统计pickGoodsCode相同值出现次数大于1的数据
+db.tb_pickCode.aggregate([{$group:{_id:'$_id','pickGoodsCode':{$first:'$pickGoodsCode'},number:{$sum:1}}},{$match:{'number':{$gt:1}}}])
+
+//统计pickGoodsCode相同值出现次数大于1的数据的次数
+db.tb_pickCode.aggregate([{$group:{_id:'$_id','pickGoodsCode':{$first:'$pickGoodsCode'},number:{$sum:1}}},{$match:{'number':{$gt:1}}},{$count:'countNum'}])
 

@@ -155,10 +155,10 @@ class test_tongji():
             print('昨日销售总额%.2f' % sales_amount)
             print('昨日第三方销售总额%.2f' % sales_amount_three)
             print('昨日余额销售总额%.2f' % sales_amount_balance)
-        elif nu==7:
-            print('近7天销售总额%.2f' % sales_amount)
-            print('近7天第三方销售总额%.2f' % sales_amount_three)
-            print('近7天余额销售总额%.2f' % sales_amount_balance)
+        elif nu>2:
+            print('近%d7天销售总额%.2f' % (nu,sales_amount))
+            print('近%d天第三方销售总额%.2f' % (nu,sales_amount_three))
+            print('近%d天余额销售总额%.2f' % (nu,sales_amount_balance))
 
 if __name__ == "__main__":
     a=test_tongji()
@@ -167,6 +167,6 @@ if __name__ == "__main__":
     print('昨日##########################################')
     a.sale(0,2)
     print('近七天########################################')
-    a.sale(1,7)
+    a.sale(1,30)
 
 
