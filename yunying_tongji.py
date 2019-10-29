@@ -105,8 +105,7 @@ class test_tongji():
                 self.total_refund=float(str(j_total.get('sumGoodsPay')))  ##退款总金额
                 # print('退款总金额%.2f'%self.total_refund)
 
-        sales_amount=self.total_sales+self.total_Trans_sales
-                     # -self.total_refund ##销售总额
+        sales_amount=self.total_sales+self.total_Trans_sales-self.total_refund ##销售总额
         db_total_three = database.connect_mongodb_all('tb_order',2,self.mon_sql('sale',self.get_data(n,nu)[0],self.get_data(n,nu)[1]))
         if type(db_total_three)==None:
             self.total_sales_three=0
@@ -123,8 +122,7 @@ class test_tongji():
             for j_total_three in db_total_refund_three:
                 self.total_refund_three = float(str(j_total_three.get('thirdPayMoney')))  ##第三方退款总金额
                 # print('第三方退款总金额%.2f'%self.total_refund_three)
-        sales_amount_three = self.total_sales_three
-                             # - self.total_refund_three  ##第三方销售总额
+        sales_amount_three = self.total_sales_three- self.total_refund_three  ##第三方销售总额
 
         db_total_balance  = database.connect_mongodb_all('tb_order',2,self.mon_sql('sale',self.get_data(n,nu)[0],self.get_data(n,nu)[1]))
         if type(db_total_balance)==None:
@@ -143,8 +141,7 @@ class test_tongji():
             for j_total_balance in db_total_refund_balance:
                 self.total_refund_balance = float(str(j_total_balance.get('deductionPrice')))  ##余额退款总金额
                 # print('余额退款总金额%.2f'%self.total_refund_balance)
-        sales_amount_balance = self.total_sales_balance
-                               # - self.total_refund_balance  ##余额销售总额
+        sales_amount_balance = self.total_sales_balance- self.total_refund_balance  ##余额销售总额
 
 
         if nu==1:

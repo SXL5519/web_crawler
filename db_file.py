@@ -40,8 +40,9 @@ class DB:
          :param type: 声明执行sql的方法
         :return:
         """
-
-        client = MongoClient(host=host,port=port)
+        value=''
+        client = MongoClient(host=host,port=port)##无密码
+        # client = MongoClient(host=host,port=port,username=username,password=password)
         db = client[database]
         # print(db)
         collection = db[table]
