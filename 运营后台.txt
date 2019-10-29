@@ -1,0 +1,48 @@
+#################今日发放广告费总数############################
+db.getCollection('tb_red_packet').find({"obtainTime":{"$gt":ISODate("2019-09-09T16:00:00+08:00")}}).count()
+
+
+
+############################今日广告费总额######################
+db.tb_red_packet.aggregate([{'$match':{$and:[{"obtainTime":{"$gt":ISODate("2019-09-09T16:00:00+08:00")}},{"redPacketType" :{$ne:"FIRST_ORDER"}}]}},
+{'$group':{'_id':'今日红包发放总额','sum_money':{$sum:'$money'}}}])
+
+
+#############################昨日广告费总额##########################
+db.tb_red_packet.aggregate([{'$match':{$and:[{"obtainTime":{"$gte":ISODate("2019-09-08T16:00:00+08:00"),"$lte":ISODate("2019-09-09T16:00:00+08:00")}}]}},
+{'$group':{'_id':'昨日红包发放总额','sum_money':{$sum:'$money'}}}])
+
+
+
+#########################近7天广告费总额######################
+db.tb_red_packet.aggregate([{'$match':{$and:[{"obtainTime":{"$gt":ISODate("2019-09-03T16:00:00+08:00")}}]}},
+{'$group':{'_id':'7日红包发放总额','sum_money':{$sum:'$money'}}}])
+
+
+
+db.tb_red_packet.aggregate([{'$match':{$and:[{$or:[{"status" :"FROZEN_ING"},{"status" :"ACCOUNTED"},{"status" :"WAIT_SHARE"}]},
+{"obtainTime":{"$gte":ISODate("2019-09-10T00:00:00+08:00")}},{"money":{$gte:0}}]}},
+{'$group':{'_id':'今日红包发放总数','sum':{$sum:1}}}])
+
+
+
+db.tb_red_packet.aggregate([{'$match':{$and:[{$or:[{"status" :"FROZEN_ING"},{"status" :"ACCOUNTED"},{"status" :"WAIT_SHARE"}]},
+{"obtainTime":{"$gte":ISODate("2019-09-10T00:00:00+08:00")}},{"money":{$gte:0}}]}},
+{'$group':{'_id':'今日红包发放总额','sum':{$sum:"$money"}}}])
+
+db.tb_red_packet.aggregate([{'$match':{$and:[{$or:[{"status" :"FROZEN_ING"},{"status" :"ACCOUNTED"},{"status" :"WAIT_SHARE"}]},
+{"obtainTime":{"$gte":ISODate("2019-09-09T00:00:00+08:00")}},{"obtainTime":{"$lte":ISODate("2019-09-10T00:00:00+08:00")}},{"money":{$gte:0}}]}},
+{'$group':{'_id':'昨日红包发放总额','sum':{$sum:"$money"}}}])
+
+db.tb_red_packet.aggregate([{'$match':{$and:[{$or:[{"status" :"FROZEN_ING"},{"status" :"ACCOUNTED"},{"status" :"WAIT_SHARE"}]},
+{"obtainTime":{"$gte":ISODate("2019-09-04T00:00:00+08:00")}},{"money":{$gte:0}}]}},
+{'$group':{'_id':'近7天红包发放总额','sum':{$sum:"$money"}}}])
+
+db.tb_red_packet.aggregate([{'$match':{$and:[{"obtainTime":{"$gt":ISODate("2019-09-10T00:00:00+08:00")}}]}},
+{'$group':{'_id':'今日红包发放总额','sum_money':{$sum:'$money'}}}])
+
+db.tb_red_packet.aggregate([{'$match':{$and:[{"obtainTime":{"$gte":ISODate("2019-09-09T00:00:00+08:00"),"$lte":ISODate("2019-09-10T00:00:00+08:00")}}]}},
+{'$group':{'_id':'昨日红包发放总额','sum_money':{$sum:'$money'}}}])
+
+db.tb_red_packet.aggregate([{'$match':{$and:[{"obtainTime":{"$gt":ISODate("2019-09-04T00:00:00+08:00")}}]}},
+{'$group':{'_id':'7日红包发放总额','sum_money':{$sum:'$money'}}}])
